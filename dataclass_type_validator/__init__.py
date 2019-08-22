@@ -77,7 +77,8 @@ def _validate_sequential_types(expected_type: type, value: Any, strict: bool) ->
         return validate_func(expected_type, value, strict)
 
     if str(expected_type).startswith('typing.Union'):
-        is_valid = any(_validate_types(expected_type=t, value=value, strict=strict) is None for t in expected_type.__args__)
+        is_valid = any(_validate_types(expected_type=t, value=value, strict=strict) is None
+                       for t in expected_type.__args__)
         if not is_valid:
             return f'must be an instance of {expected_type}, but received {value}'
         return
