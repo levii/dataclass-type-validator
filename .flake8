@@ -1,0 +1,19 @@
+[flake8]
+max-line-length = 120
+exclude =
+  # Exclude generated code.
+  **/proto/**
+  **/gapic/**
+  *_pb2.py
+
+  # Standard linting exemptions.
+  __pycache__,
+  .git,
+  *.pyc,
+  conf.py
+
+# E266: Too many leading '#' for block comment
+# H306: imports not in alphabetical order
+# H404: multi line docstring should start without a leading new line
+# H405: multi line docstring summary not separated with an empty line
+ignore = E266,H306,H404,H405
