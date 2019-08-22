@@ -167,11 +167,9 @@ class TestTypeValidationDict:
             ), DataclassTestDict)
 
 
-
 @dataclasses.dataclass(frozen=True)
 class DataclassTestCallable:
     func: typing.Callable[[int, int], int]
-
 
     def __post_init__(self):
         dataclass_type_validator(self)
