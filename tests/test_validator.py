@@ -3,6 +3,7 @@ import dataclasses
 import typing
 
 from dataclass_type_validator import dataclass_type_validator
+from dataclass_type_validator import TypeValidationError
 
 
 @dataclasses.dataclass(frozen=True)
@@ -26,7 +27,7 @@ class TestTypeValidationNumber:
         ), DataclassTestNumber)
 
     def test_build_failure_on_number(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeValidationError):
             assert isinstance(DataclassTestNumber(
                 number=1,
                 optional_number='string'
@@ -54,7 +55,7 @@ class TestTypeValidationString:
         ), DataclassTestString)
 
     def test_build_failure_on_string(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeValidationError):
             assert isinstance(DataclassTestString(
                 string='str',
                 optional_string=123
@@ -85,7 +86,7 @@ class TestTypeValidationList:
         ), DataclassTestList)
 
     def test_build_failure_on_array_numbers(self):
-        with pytest.raises(ValueError, match='must be an instance of typing.List\\[int\\]'):
+        with pytest.raises(TypeValidationError, match='must be an instance of typing.List\\[int\\]'):
             assert isinstance(DataclassTestList(
                 array_of_numbers=['abc'],
                 array_of_strings=['abc'],
@@ -93,7 +94,7 @@ class TestTypeValidationList:
             ), DataclassTestList)
 
     def test_build_failure_on_array_strings(self):
-        with pytest.raises(ValueError, match='must be an instance of typing.List\\[str\\]'):
+        with pytest.raises(TypeValidationError, match='must be an instance of typing.List\\[str\\]'):
             assert isinstance(DataclassTestList(
                 array_of_numbers=[1, 2],
                 array_of_strings=[123],
@@ -101,7 +102,7 @@ class TestTypeValidationList:
             ), DataclassTestList)
 
     def test_build_failure_on_array_optional_strings(self):
-        with pytest.raises(ValueError, match="must be an instance of typing.List\\[typing.Union\\[str, NoneType\\]\\]"):
+        with pytest.raises(TypeValidationError, match="must be an instance of typing.List\\[typing.Union\\[str, NoneType\\]\\]"):
             assert isinstance(DataclassTestList(
                 array_of_numbers=[1, 2],
                 array_of_strings=['abc'],
@@ -130,13 +131,13 @@ class TestTypeValidationUnion:
         ), DataclassTestUnion)
 
     def test_build_failure(self):
-        with pytest.raises(ValueError, match='must be an instance of typing.Union\\[str, int\\]'):
+        with pytest.raises(TypeValidationError, match='must be an instance of typing.Union\\[str, int\\]'):
             assert isinstance(DataclassTestUnion(
                 string_or_number=None,
                 optional_string=None
             ), DataclassTestUnion)
 
-        with pytest.raises(ValueError, match='must be an instance of typing.Union\\[str, NoneType\\]'):
+        with pytest.raises(TypeValidationError, match='must be an instance of typing.Union\\[str, NoneType\\]'):
             assert isinstance(DataclassTestUnion(
                 string_or_number=123,
                 optional_string=123
@@ -160,7 +161,7 @@ class TestTypeValidationDict:
         ), DataclassTestDict)
 
     def test_build_failure(self):
-        with pytest.raises(ValueError, match='must be an instance of typing.Dict\\[str, str\\]'):
+        with pytest.raises(TypeValidationError, match='must be an instance of typing.Dict\\[str, str\\]'):
             assert isinstance(DataclassTestDict(
                 str_to_str={'str': 123},
                 str_to_any={'key': []}
@@ -182,7 +183,7 @@ class TestTypeValidationCallable:
         ), DataclassTestCallable)
 
     def test_build_failure(self):
-        with pytest.raises(ValueError, match='must be an instance of Callable'):
+        with pytest.raises(TypeValidationError, match='must be an instance of Callable'):
             assert isinstance(DataclassTestCallable(
                 func=None,
             ), DataclassTestCallable)

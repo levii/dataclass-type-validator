@@ -4,6 +4,22 @@ from typing import Any
 from typing import Optional
 
 
+class TypeValidationError(Exception):
+    def __init__(self, *args, errors: dict):
+        super(TypeValidationError, self).__init__(*args)
+        self.errors = errors
+
+    def __repr__(self):
+        cls = self.__class__
+        cls_name = f'{cls.__module__}.{cls.__name__}' if cls.__module__ != '__main__' else cls.__name__
+        attrs = ', '.join([repr(v) for v in self.args])
+        return f'{cls_name}({attrs}, errors={repr(self.errors)})'
+
+    def __str__(self):
+        s = super(TypeValidationError, self).__str__()
+        return f'{s} (errors = {self.errors})'
+
+
 def _validate_type(expected_type: type, value: Any) -> Optional[str]:
     if not isinstance(value, expected_type):
         return f'must be an instance of {expected_type}, but received {type(value)}'
@@ -91,4 +107,4 @@ def dataclass_type_validator(target):
             errors[field_name] = err
 
     if len(errors) > 0:
-        raise ValueError(f'Dataclass Type Validation Error: {errors}')
+        raise TypeValidationError('Dataclass Type Validation Error', errors=errors)
