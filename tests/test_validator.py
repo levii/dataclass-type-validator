@@ -102,7 +102,8 @@ class TestTypeValidationList:
             ), DataclassTestList)
 
     def test_build_failure_on_array_optional_strings(self):
-        with pytest.raises(TypeValidationError, match="must be an instance of typing.List\\[typing.Union\\[str, NoneType\\]\\]"):
+        with pytest.raises(TypeValidationError,
+                           match="must be an instance of typing.List\\[typing.Union\\[str, NoneType\\]\\]"):
             assert isinstance(DataclassTestList(
                 array_of_numbers=[1, 2],
                 array_of_strings=['abc'],
