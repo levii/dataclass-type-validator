@@ -97,13 +97,12 @@ def _validate_types(expected_type: type, value: Any, strict: bool) -> Optional[s
 
 def dataclass_type_validator(target, strict: bool = False):
     fields = dataclasses.fields(target)
-    values = dataclasses.asdict(target)
 
     errors = {}
     for field in fields:
         field_name = field.name
         expected_type = field.type
-        value = values[field_name]
+        value = getattr(target, field_name)
 
         err = _validate_types(expected_type=expected_type, value=value, strict=strict)
         if err is not None:

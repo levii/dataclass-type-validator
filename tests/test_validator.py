@@ -188,3 +188,33 @@ class TestTypeValidationCallable:
             assert isinstance(DataclassTestCallable(
                 func=None,
             ), DataclassTestCallable)
+
+
+@dataclasses.dataclass(frozen=True)
+class ChildValue:
+    child: str
+
+    def __post_init__(self):
+        dataclass_type_validator(self)
+
+
+@dataclasses.dataclass(frozen=True)
+class ParentValue:
+    child: ChildValue
+
+    def __post_init__(self):
+        dataclass_type_validator(self)
+
+
+class TestNestedDataclass:
+    def test_build_success(self):
+        assert isinstance(ParentValue(
+            child=ChildValue(child='string')
+        ), ParentValue)
+
+    def test_build_failure(self):
+        with pytest.raises(TypeValidationError,
+                           match="must be an instance of <class 'tests.test_validator.ChildValue'>"):
+            assert isinstance(ParentValue(
+                child=None
+            ), ParentValue)
