@@ -1,5 +1,6 @@
 import dataclasses
 import typing
+import functools
 from typing import Any
 from typing import Optional
 
@@ -110,3 +111,29 @@ def dataclass_type_validator(target, strict: bool = False):
 
     if len(errors) > 0:
         raise TypeValidationError('Dataclass Type Validation Error', errors=errors)
+
+
+def dataclass_validate(cls):
+    """Dataclass decorator to automatically add validation to a dataclass.
+
+    So you don't have to add a __post_init__ method, or if you have one, you don't have
+    to remember to add the dataclass_type_validator(self) call to it; just decorate your
+    dataclass with this instead.
+    """
+    if hasattr(cls, "__post_init__"):
+        wrapped_func_name = "__post_init__"
+    else:
+        # No __post_init__ to wrap, but it means there's no post-init processing
+        # taking place, so we can wrap the constructor instead.
+        wrapped_func_name = "__init__"
+    orig_func = getattr(cls, wrapped_func_name)
+
+    @functools.wraps(orig_func)
+    def wrapper(self, *args, **kwargs):
+        # Call constructor or __post_init__ as appropriate
+        orig_func(self, *args, **kwargs)
+        # And then do validation
+        dataclass_type_validator(self, strict=True)
+
+    setattr(cls, wrapped_func_name, wrapper)
+    return cls

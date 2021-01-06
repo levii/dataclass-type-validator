@@ -2,7 +2,7 @@ import pytest
 import dataclasses
 import typing
 
-from dataclass_type_validator import dataclass_type_validator
+from dataclass_type_validator import dataclass_type_validator, dataclass_validate
 from dataclass_type_validator import TypeValidationError
 
 
@@ -218,3 +218,58 @@ class TestNestedDataclass:
             assert isinstance(ParentValue(
                 child=None
             ), ParentValue)
+
+
+@dataclass_validate
+@dataclasses.dataclass(frozen=True)
+class DataclassWithPostInitTestDecorator:
+    number: int
+    optional_number: typing.Optional[int] = None
+
+    def __post_init__(self):
+        dataclass_type_validator(self)
+
+
+class TestDecoratorWithPostInit:
+    def test_build_success(self):
+        assert isinstance(DataclassWithPostInitTestDecorator(
+            number=1,
+            optional_number=None,
+        ), DataclassWithPostInitTestDecorator)
+        assert isinstance(DataclassWithPostInitTestDecorator(
+            number=1,
+            optional_number=1
+        ), DataclassWithPostInitTestDecorator)
+
+    def test_build_failure_on_number(self):
+        with pytest.raises(TypeValidationError):
+            assert isinstance(DataclassWithPostInitTestDecorator(
+                number=1,
+                optional_number='string'
+            ), DataclassWithPostInitTestDecorator)
+
+
+@dataclass_validate
+@dataclasses.dataclass(frozen=True)
+class DataclassWithoutPostInitTestDecorator:
+    number: int
+    optional_number: typing.Optional[int] = None
+
+
+class TestDecoratorWithoutPostInit:
+    def test_build_success(self):
+        assert isinstance(DataclassWithoutPostInitTestDecorator(
+            number=1,
+            optional_number=None,
+        ), DataclassWithoutPostInitTestDecorator)
+        assert isinstance(DataclassWithoutPostInitTestDecorator(
+            number=1,
+            optional_number=1
+        ), DataclassWithoutPostInitTestDecorator)
+
+    def test_build_failure_on_number(self):
+        with pytest.raises(TypeValidationError):
+            assert isinstance(DataclassWithoutPostInitTestDecorator(
+                number=1,
+                optional_number='string'
+            ), DataclassWithoutPostInitTestDecorator)
