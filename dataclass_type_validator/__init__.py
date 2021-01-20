@@ -130,7 +130,7 @@ def dataclass_validate(cls=None, *, strict: bool = False, before_post_init: bool
     if cls is None:
         return functools.partial(dataclass_validate, strict=strict, before_post_init=before_post_init)
 
-    if before_post_init or not hasattr(cls, "__post_init__"):
+    if not hasattr(cls, "__post_init__"):
         # Either the user wants to force the validation to occur before __post_init__ is called,
         # or the dataclass has no __post_init__ (which means there's no post-init processing
         # taking place), so we wrap the constructor instead.
@@ -141,11 +141,17 @@ def dataclass_validate(cls=None, *, strict: bool = False, before_post_init: bool
 
     orig_method = getattr(cls, wrapped_method_name)
 
-    @functools.wraps(orig_method)
-    def method_wrapper(self, *args, **kwargs):
-        x = orig_method(self, *args, **kwargs)
-        dataclass_type_validator(self, strict=strict)
-        return x
+    if wrapped_method_name == "__post_init__" and before_post_init:
+        @functools.wraps(orig_method)
+        def method_wrapper(self, *args, **kwargs):
+            dataclass_type_validator(self, strict=strict)
+            return orig_method(self, *args, **kwargs)
+    else:
+        @functools.wraps(orig_method)
+        def method_wrapper(self, *args, **kwargs):
+            x = orig_method(self, *args, **kwargs)
+            dataclass_type_validator(self, strict=strict)
+            return x
     setattr(cls, wrapped_method_name, method_wrapper)
 
     return cls
