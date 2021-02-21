@@ -26,9 +26,9 @@ def _validate_type(expected_type: type, value: Any) -> Optional[str]:
         return f'must be an instance of {expected_type}, but received {type(value)}'
 
 
-def _validate_typing_list(expected_type: type, value: Any, strict: bool) -> Optional[str]:
-    if not isinstance(value, list):
-        return f'must be an instance of array, but received {type(value)}'
+def _validate_typing_iterable(expected_type: type, value: Any, strict: bool) -> Optional[str]:
+    if not isinstance(value, typing.Iterable):
+        return f'must be an instance of iterable, but received {type(value)}'
 
     expected_item_type = expected_type.__args__[0]
     errors = [_validate_types(expected_type=expected_item_type, value=v, strict=strict) for v in value]
@@ -66,7 +66,9 @@ def _validate_typing_callable(expected_type: type, value: Any, strict: bool) -> 
 
 
 _validate_typing_mappings = {
-    'List': _validate_typing_list,
+    'List': _validate_typing_iterable,
+    'Tuple': _validate_typing_iterable,
+    'FrozenSet': _validate_typing_iterable,
     'Dict': _validate_typing_dict,
     'Callable': _validate_typing_callable,
 }
