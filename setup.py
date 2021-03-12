@@ -2,7 +2,7 @@ import setuptools
 
 
 name = 'dataclass-type-validator'
-version = '0.0.5'
+version = '0.0.6'
 description = 'Dataclass Type Validator Library'
 dependencies = []
 
