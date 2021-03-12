@@ -243,10 +243,10 @@ class TestDecoratorWithPostInit:
 
     def test_build_failure_on_number(self):
         with pytest.raises(TypeValidationError):
-            assert isinstance(DataclassWithPostInitTestDecorator(
+            _ = DataclassWithPostInitTestDecorator(
                 number=1,
                 optional_number='string'
-            ), DataclassWithPostInitTestDecorator)
+            )
 
 
 @dataclass_validate
@@ -269,7 +269,26 @@ class TestDecoratorWithoutPostInit:
 
     def test_build_failure_on_number(self):
         with pytest.raises(TypeValidationError):
-            assert isinstance(DataclassWithoutPostInitTestDecorator(
+            _ = DataclassWithoutPostInitTestDecorator(
                 number=1,
                 optional_number='string'
-            ), DataclassWithoutPostInitTestDecorator)
+            )
+
+
+@dataclass_validate(strict=True)
+@dataclasses.dataclass(frozen=True)
+class DataclassWithStrictChecking:
+    values: typing.List[int]
+
+
+class TestDecoratorStrict:
+    def test_build_success(self):
+        assert isinstance(DataclassWithStrictChecking(
+            values=[1, 2, 3],
+        ), DataclassWithStrictChecking)
+
+    def test_build_failure_on_number(self):
+        with pytest.raises(TypeValidationError):
+            _ = DataclassWithStrictChecking(
+                values=[1, 2, "three"],
+            )
