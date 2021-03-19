@@ -26,15 +26,30 @@ def _validate_type(expected_type: type, value: Any) -> Optional[str]:
         return f'must be an instance of {expected_type}, but received {type(value)}'
 
 
-def _validate_typing_list(expected_type: type, value: Any, strict: bool) -> Optional[str]:
-    if not isinstance(value, list):
-        return f'must be an instance of array, but received {type(value)}'
-
+def _validate_iterable_items(expected_type: type, value: Any, strict: bool) -> Optional[str]:
     expected_item_type = expected_type.__args__[0]
     errors = [_validate_types(expected_type=expected_item_type, value=v, strict=strict) for v in value]
     errors = [x for x in errors if x]
     if len(errors) > 0:
         return f'must be an instance of {expected_type}, but there are some errors: {errors}'
+
+
+def _validate_typing_list(expected_type: type, value: Any, strict: bool) -> Optional[str]:
+    if not isinstance(value, list):
+        return f'must be an instance of list, but received {type(value)}'
+    return _validate_iterable_items(expected_type, value, strict)
+
+
+def _validate_typing_tuple(expected_type: type, value: Any, strict: bool) -> Optional[str]:
+    if not isinstance(value, tuple):
+        return f'must be an instance of tuple, but received {type(value)}'
+    return _validate_iterable_items(expected_type, value, strict)
+
+
+def _validate_typing_frozenset(expected_type: type, value: Any, strict: bool) -> Optional[str]:
+    if not isinstance(value, frozenset):
+        return f'must be an instance of frozenset, but received {type(value)}'
+    return _validate_iterable_items(expected_type, value, strict)
 
 
 def _validate_typing_dict(expected_type: type, value: Any, strict: bool) -> Optional[str]:
@@ -67,6 +82,8 @@ def _validate_typing_callable(expected_type: type, value: Any, strict: bool) -> 
 
 _validate_typing_mappings = {
     'List': _validate_typing_list,
+    'Tuple': _validate_typing_tuple,
+    'FrozenSet': _validate_typing_frozenset,
     'Dict': _validate_typing_dict,
     'Callable': _validate_typing_callable,
 }
@@ -113,27 +130,45 @@ def dataclass_type_validator(target, strict: bool = False):
         raise TypeValidationError('Dataclass Type Validation Error', errors=errors)
 
 
-def dataclass_validate(cls):
+def dataclass_validate(cls=None, *, strict: bool = False, before_post_init: bool = False):
     """Dataclass decorator to automatically add validation to a dataclass.
 
     So you don't have to add a __post_init__ method, or if you have one, you don't have
     to remember to add the dataclass_type_validator(self) call to it; just decorate your
     dataclass with this instead.
+
+    :param strict: bool
+    :param before_post_init: bool - if True, force the validation logic to occur before
+        __post_init__ is called.  Only has effect if the class defines __post_init__.
+        This setting allows you to ensure the field values are already validated to
+        be the correct type before any additional logic in __post_init__ does further
+        validation.  Default: False.
     """
-    if hasattr(cls, "__post_init__"):
-        wrapped_func_name = "__post_init__"
+    if cls is None:
+        return functools.partial(dataclass_validate, strict=strict, before_post_init=before_post_init)
+
+    if not hasattr(cls, "__post_init__"):
+        # Either the user wants to force the validation to occur before __post_init__ is called,
+        # or the dataclass has no __post_init__ (which means there's no post-init processing
+        # taking place), so we wrap the constructor instead.
+        wrapped_method_name = "__init__"
     else:
-        # No __post_init__ to wrap, but it means there's no post-init processing
-        # taking place, so we can wrap the constructor instead.
-        wrapped_func_name = "__init__"
-    orig_func = getattr(cls, wrapped_func_name)
+        # Normally make validation take place at the end of __post_init__
+        wrapped_method_name = "__post_init__"
 
-    @functools.wraps(orig_func)
-    def wrapper(self, *args, **kwargs):
-        # Call constructor or __post_init__ as appropriate
-        orig_func(self, *args, **kwargs)
-        # And then do validation
-        dataclass_type_validator(self, strict=True)
+    orig_method = getattr(cls, wrapped_method_name)
 
-    setattr(cls, wrapped_func_name, wrapper)
+    if wrapped_method_name == "__post_init__" and before_post_init:
+        @functools.wraps(orig_method)
+        def method_wrapper(self, *args, **kwargs):
+            dataclass_type_validator(self, strict=strict)
+            return orig_method(self, *args, **kwargs)
+    else:
+        @functools.wraps(orig_method)
+        def method_wrapper(self, *args, **kwargs):
+            x = orig_method(self, *args, **kwargs)
+            dataclass_type_validator(self, strict=strict)
+            return x
+    setattr(cls, wrapped_method_name, method_wrapper)
+
     return cls
