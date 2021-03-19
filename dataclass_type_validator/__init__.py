@@ -6,19 +6,33 @@ from typing import Optional
 
 
 class TypeValidationError(Exception):
-    def __init__(self, *args, errors: dict):
+    """Exception raised on type validation errors.
+    """
+
+    def __init__(self, *args, target: dataclasses.dataclass, errors: dict):
         super(TypeValidationError, self).__init__(*args)
+        self.class_ = target.__class__
         self.errors = errors
 
     def __repr__(self):
-        cls = self.__class__
-        cls_name = f'{cls.__module__}.{cls.__name__}' if cls.__module__ != '__main__' else cls.__name__
-        attrs = ', '.join([repr(v) for v in self.args])
-        return f'{cls_name}({attrs}, errors={repr(self.errors)})'
+        cls = self.class_
+        cls_name = (
+            f"{cls.__module__}.{cls.__name__}"
+            if cls.__module__ != "__main__"
+            else cls.__name__
+        )
+        attrs = ", ".join([repr(v) for v in self.args])
+        return f"{cls_name}({attrs}, errors={repr(self.errors)})"
 
     def __str__(self):
-        s = super(TypeValidationError, self).__str__()
-        return f'{s} (errors = {self.errors})'
+        cls = self.class_
+        cls_name = (
+            f"{cls.__module__}.{cls.__name__}"
+            if cls.__module__ != "__main__"
+            else cls.__name__
+        )
+        s = cls_name
+        return f"{s} (errors = {self.errors})"
 
 
 def _validate_type(expected_type: type, value: Any) -> Optional[str]:
@@ -127,7 +141,9 @@ def dataclass_type_validator(target, strict: bool = False):
             errors[field_name] = err
 
     if len(errors) > 0:
-        raise TypeValidationError('Dataclass Type Validation Error', errors=errors)
+        raise TypeValidationError(
+            "Dataclass Type Validation Error", target=target, errors=errors
+        )
 
 
 def dataclass_validate(cls=None, *, strict: bool = False, before_post_init: bool = False):
@@ -148,9 +164,7 @@ def dataclass_validate(cls=None, *, strict: bool = False, before_post_init: bool
         return functools.partial(dataclass_validate, strict=strict, before_post_init=before_post_init)
 
     if not hasattr(cls, "__post_init__"):
-        # Either the user wants to force the validation to occur before __post_init__ is called,
-        # or the dataclass has no __post_init__ (which means there's no post-init processing
-        # taking place), so we wrap the constructor instead.
+        # No post-init method, so no processing.  Wrap the constructor instead.
         wrapped_method_name = "__init__"
     else:
         # Normally make validation take place at the end of __post_init__
@@ -159,11 +173,14 @@ def dataclass_validate(cls=None, *, strict: bool = False, before_post_init: bool
     orig_method = getattr(cls, wrapped_method_name)
 
     if wrapped_method_name == "__post_init__" and before_post_init:
+        # User wants to force validation to run before __post_init__, so call it
+        # before the wrapped function.
         @functools.wraps(orig_method)
         def method_wrapper(self, *args, **kwargs):
             dataclass_type_validator(self, strict=strict)
             return orig_method(self, *args, **kwargs)
     else:
+        # Normal case - call validator at the end of __init__ or __post_init__.
         @functools.wraps(orig_method)
         def method_wrapper(self, *args, **kwargs):
             x = orig_method(self, *args, **kwargs)
