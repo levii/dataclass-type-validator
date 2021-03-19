@@ -1,5 +1,9 @@
 # dataclass-type-validator
 
+The `dataclass-type-validator` is a type validation library for the properties of `dataclasses.dataclass` using Python type hint information.
+
+## Installation
+
 `pip install dataclass-type-validator` or add `dataclass-type-validator` line to `requirements.txt`
 
 ## A Simple Example
