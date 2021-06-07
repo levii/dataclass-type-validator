@@ -94,6 +94,12 @@ def _validate_typing_callable(expected_type: type, value: Any, strict: bool) -> 
         return f'must be an instance of {expected_type._name}, but received {type(value)}'
 
 
+def _validate_typing_literal(expected_type: type, value: Any, strict: bool) -> Optional[str]:
+    _ = strict
+    if value not in expected_type.__args__:
+        return f'must be one of [{", ".join(expected_type.__args__)}] but received {value}'
+
+
 _validate_typing_mappings = {
     'List': _validate_typing_list,
     'Tuple': _validate_typing_tuple,
@@ -107,6 +113,9 @@ def _validate_sequential_types(expected_type: type, value: Any, strict: bool) ->
     validate_func = _validate_typing_mappings.get(expected_type._name)
     if validate_func is not None:
         return validate_func(expected_type, value, strict)
+
+    if str(expected_type).startswith('typing.Literal'):
+        return _validate_typing_literal(expected_type, value, strict)
 
     if str(expected_type).startswith('typing.Union'):
         is_valid = any(_validate_types(expected_type=t, value=value, strict=strict) is None
