@@ -146,6 +146,35 @@ class TestTypeValidationUnion:
 
 
 @dataclasses.dataclass(frozen=True)
+class DataclassTestLiteral:
+    restricted_value: typing.Literal['foo', 'bar']
+
+    def __post_init__(self):
+        dataclass_type_validator(self, strict=True)
+
+
+class TestTypeValidationLiteral:
+    def test_build_success(self):
+        assert isinstance(DataclassTestLiteral(
+            restricted_value='foo'
+        ), DataclassTestLiteral)
+        assert isinstance(DataclassTestLiteral(
+            restricted_value='bar'
+        ), DataclassTestLiteral)
+
+    def test_build_failure(self):
+        with pytest.raises(TypeValidationError, match='must be one of \\[foo, bar\\] but received fizz'):
+            assert isinstance(DataclassTestLiteral(
+                restricted_value='fizz'
+            ), DataclassTestLiteral)
+
+        with pytest.raises(TypeValidationError, match='must be one of \\[foo, bar\\] but received None'):
+            assert isinstance(DataclassTestLiteral(
+                restricted_value=None,
+            ), DataclassTestLiteral)
+
+
+@dataclasses.dataclass(frozen=True)
 class DataclassTestDict:
     str_to_str: typing.Dict[str, str]
     str_to_any: typing.Dict[str, typing.Any]
