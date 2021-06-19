@@ -2,7 +2,7 @@ import setuptools
 
 
 name = 'dataclass-type-validator'
-version = '0.0.7'
+version = '0.1.0'
 description = 'Dataclass Type Validator Library'
 dependencies = []
 
@@ -23,6 +23,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/levii/dataclass-type-validator",
     packages=packages,
+    python_requires=">=3.8",
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

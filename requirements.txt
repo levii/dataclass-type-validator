@@ -6,10 +6,6 @@
 #
 attrs==20.3.0
     # via pytest
-importlib-metadata==4.0.1
-    # via
-    #   pluggy
-    #   pytest
 iniconfig==1.1.1
     # via pytest
 packaging==20.9
@@ -24,7 +20,3 @@ pytest==6.2.3
     # via -r requirements.in
 toml==0.10.2
     # via pytest
-typing-extensions==3.10.0.0
-    # via importlib-metadata
-zipp==3.4.1
-    # via importlib-metadata
