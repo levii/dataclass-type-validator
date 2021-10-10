@@ -8,6 +8,7 @@ from typing import Dict
 
 GlobalNS_T = Dict[str, Any]
 
+
 class TypeValidationError(Exception):
     """Exception raised on type validation errors.
     """
@@ -45,7 +46,7 @@ def _validate_type(expected_type: type, value: Any) -> Optional[str]:
 
 def _validate_iterable_items(expected_type: type, value: Any, strict: bool, globalns: GlobalNS_T) -> Optional[str]:
     expected_item_type = expected_type.__args__[0]
-    errors = [_validate_types(expected_type=expected_item_type, value=v, strict=strict, globalns=globalns) 
+    errors = [_validate_types(expected_type=expected_item_type, value=v, strict=strict, globalns=globalns)
               for v in value]
     errors = [x for x in errors if x]
     if len(errors) > 0:
@@ -77,11 +78,11 @@ def _validate_typing_dict(expected_type: type, value: Any, strict: bool, globaln
     expected_key_type = expected_type.__args__[0]
     expected_value_type = expected_type.__args__[1]
 
-    key_errors = [_validate_types(expected_type=expected_key_type, value=k, strict=strict, globalns=globalns) 
+    key_errors = [_validate_types(expected_type=expected_key_type, value=k, strict=strict, globalns=globalns)
                   for k in value.keys()]
     key_errors = [k for k in key_errors if k]
 
-    val_errors = [_validate_types(expected_type=expected_value_type, value=v, strict=strict, globalns=globalns) 
+    val_errors = [_validate_types(expected_type=expected_value_type, value=v, strict=strict, globalns=globalns)
                   for v in value.values()]
     val_errors = [v for v in val_errors if v]
 
@@ -129,7 +130,6 @@ def _validate_sequential_types(expected_type: type, value: Any, strict: bool, gl
         if not is_valid:
             return f'must be an instance of {expected_type}, but received {value}'
         return
-
 
     if strict:
         raise RuntimeError(f'Unknown type of {expected_type} (_name = {expected_type._name})')
