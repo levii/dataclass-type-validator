@@ -103,7 +103,7 @@ class TestTypeValidationList:
 
     def test_build_failure_on_array_optional_strings(self):
         with pytest.raises(TypeValidationError,
-                           match="must be an instance of typing.List\\[typing.Union\\[(str, NoneType|NoneType, str)\\]\\]"):
+                           match="must be an instance of typing.List\\[typing.Optional\\[(str)\\]\\]"):
             assert isinstance(DataclassTestList(
                 array_of_numbers=[1, 2],
                 array_of_strings=['abc'],
@@ -138,7 +138,7 @@ class TestTypeValidationUnion:
                 optional_string=None
             ), DataclassTestUnion)
 
-        with pytest.raises(TypeValidationError, match='must be an instance of typing.Union\\[str, NoneType\\]'):
+        with pytest.raises(TypeValidationError, match='must be an instance of typing.Optional\\[str\\]'):
             assert isinstance(DataclassTestUnion(
                 string_or_number=123,
                 optional_string=123
@@ -217,6 +217,34 @@ class TestTypeValidationCallable:
             assert isinstance(DataclassTestCallable(
                 func=None,
             ), DataclassTestCallable)
+
+
+@dataclasses.dataclass(frozen=True)
+class DataclassTestForwardRef:
+    number: 'int'
+    ref: typing.Optional['DataclassTestForwardRef'] = None
+
+    def __post_init__(self):
+        dataclass_type_validator(self)
+
+
+class TestTypeValidationForwardRef:
+    def test_build_success(self):
+        assert isinstance(DataclassTestForwardRef(
+            number=1,
+            ref=None,
+        ), DataclassTestForwardRef)
+        assert isinstance(DataclassTestForwardRef(
+            number=1,
+            ref=DataclassTestForwardRef(2, None)
+        ), DataclassTestForwardRef)
+
+    def test_build_failure_on_number(self):
+        with pytest.raises(TypeValidationError):
+            assert isinstance(DataclassTestForwardRef(
+                number=1,
+                ref='string'
+            ), DataclassTestForwardRef)
 
 
 @dataclasses.dataclass(frozen=True)
