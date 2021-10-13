@@ -1,8 +1,10 @@
 import dataclasses
 import functools
+import logging
 import typing
-import warnings
 from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
 
 
 class TypeValidationError(Exception):
@@ -24,6 +26,14 @@ class TypeValidationError(Exception):
         cls_name = f"{cls.__module__}.{cls.__name__}" if cls.__module__ != "__main__" else cls.__name__
         s = cls_name
         return f"{s} (errors = {self.errors})"
+
+
+class EnforceError(Exception):
+    """Exception raised on enforcing validation errors."""
+
+    def __init__(self, *args):
+        super(EnforceError, self).__init__(*args)
+        pass
 
 
 def _validate_type(expected_type: type, value: Any) -> Optional[str]:
@@ -141,7 +151,10 @@ def dataclass_type_validator(target, strict: bool = False, enforce: bool = False
         if err is not None:
             errors[field_name] = err
             if enforce:
-                target[field_name] = field.default
+                val = field.default if not isinstance(field.default, dataclasses._MISSING_TYPE) else field.default_factory()
+                if isinstance(val, dataclasses._MISSING_TYPE):
+                    raise EnforceError("Can't enforce values as there is no default")
+                target[field_name] = val
 
     if len(errors) > 0 and not enforce:
         raise TypeValidationError("Dataclass Type Validation Error", target=target, errors=errors)
@@ -149,7 +162,7 @@ def dataclass_type_validator(target, strict: bool = False, enforce: bool = False
     elif len(errors) > 0 and enforce:
         cls = target.__class__
         cls_name = f"{cls.__module__}.{cls.__name__}" if cls.__module__ != "__main__" else cls.__name__
-        warnings.warn(f"Dataclass type validation failed, types are enforced. {cls_name} errors={repr(errors)})")
+        logger.warning(f"Dataclass type validation failed, types are enforced. {cls_name} errors={repr(errors)})")
 
 
 def dataclass_validate(cls=None, *, strict: bool = False, before_post_init: bool = False, enforce: bool = False):
