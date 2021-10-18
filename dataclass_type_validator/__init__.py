@@ -117,7 +117,7 @@ def _validate_sequential_types(expected_type: type, value: Any, strict: bool) ->
     if str(expected_type).startswith('typing.Literal'):
         return _validate_typing_literal(expected_type, value, strict)
 
-    if str(expected_type).startswith('typing.Union'):
+    if str(expected_type).startswith('typing.Union') or str(expected_type).startswith('typing.Optional'):
         is_valid = any(_validate_types(expected_type=t, value=value, strict=strict) is None
                        for t in expected_type.__args__)
         if not is_valid:
