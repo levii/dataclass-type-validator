@@ -1,6 +1,7 @@
 import pytest
 import dataclasses
 import typing
+import sys
 
 from dataclass_type_validator import dataclass_type_validator, dataclass_validate
 from dataclass_type_validator import TypeValidationError
@@ -103,7 +104,7 @@ class TestTypeValidationList:
 
     def test_build_failure_on_array_optional_strings(self):
         with pytest.raises(TypeValidationError,
-                           match="must be an instance of typing.List\\[typing.Optional\\[(str)\\]\\]"):
+                           match=f"must be an instance of typing.List\\[{optional_type_name('str')}\\]"):
             assert isinstance(DataclassTestList(
                 array_of_numbers=[1, 2],
                 array_of_strings=['abc'],
@@ -138,7 +139,7 @@ class TestTypeValidationUnion:
                 optional_string=None
             ), DataclassTestUnion)
 
-        with pytest.raises(TypeValidationError, match='must be an instance of typing.Optional\\[str\\]'):
+        with pytest.raises(TypeValidationError, match=f'must be an instance of {optional_type_name("str")}'):
             assert isinstance(DataclassTestUnion(
                 string_or_number=123,
                 optional_string=123
@@ -349,3 +350,14 @@ class TestDecoratorStrict:
             _ = DataclassWithStrictChecking(
                 values=[1, 2, "three"],
             )
+
+
+def optional_type_name(arg_type_name):
+    """ Gets the typename string for an typing.Optional.
+        On python 3.8 an Optional[int] is converted to a typing.Union[int, NoneType].
+        On python 3.9 it remains unchanged as Optional[int].
+    """
+    if sys.version_info < (3, 9):
+        return f"typing.Union\\[({arg_type_name}, NoneType|NoneType, {arg_type_name})\\]"
+
+    return f"typing.Optional\\[{arg_type_name}\\]"
