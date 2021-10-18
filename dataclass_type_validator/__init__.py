@@ -144,8 +144,15 @@ def _validate_types(expected_type: type, value: Any, strict: bool, globalns: Glo
                                           strict=strict, globalns=globalns)
 
     if isinstance(expected_type, typing.ForwardRef):
-        referenced_type = expected_type._evaluate(globalns, None, set())
+        referenced_type = _evaluate_forward_reference(expected_type, globalns)
         return _validate_type(expected_type=referenced_type, value=value)
+
+
+def _evaluate_forward_reference(ref_type: typing.ForwardRef, globalns: GlobalNS_T):
+    """ Support evaluating ForwardRef types on both Python 3.8 and 3.9. """
+    if sys.version_info < (3, 9):
+        return ref_type._evaluate(globalns, None)
+    return ref_type._evaluate(globalns, None, set())
 
 
 def dataclass_type_validator(target, strict: bool = False):
