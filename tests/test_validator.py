@@ -323,6 +323,7 @@ class TestDecoratorStrict:
                 values=[1, 2, "three"],
             )
 
+
 def optional_type_name(arg_type_name):
     """ Gets the typename string for an typing.Optional.
         On python 3.8 an Optional[int] is converted to a typing.Union[int, NoneType].
