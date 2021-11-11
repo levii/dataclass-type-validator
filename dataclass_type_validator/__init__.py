@@ -3,9 +3,8 @@ import functools
 import logging
 import typing
 from typing import Any, Optional
-
+from pydantic import BaseModel
 logger = logging.getLogger(__name__)
-
 
 class TypeValidationError(Exception):
     """Exception raised on type validation errors."""
@@ -154,10 +153,10 @@ def dataclass_type_validator(target, strict: bool = False, enforce: bool = False
         if err is not None:
             errors[field_name] = err
             if enforce:
-                val = field.default if not isinstance(val, (dataclasses._MISSING_TYPE, type(None)) else field.default_factory()
+                val = field.default if not isinstance(field.default, (dataclasses._MISSING_TYPE, type(None))) else field.default_factory()
                 if isinstance(val, (dataclasses._MISSING_TYPE, type(None))):
                     raise EnforceError("Can't enforce values as there is no default")
-                target[field_name] = val
+                setattr(target, field_name, val)
 
     if len(errors) > 0 and not enforce:
         raise TypeValidationError("Dataclass Type Validation Error", target=target, errors=errors)
@@ -166,6 +165,34 @@ def dataclass_type_validator(target, strict: bool = False, enforce: bool = False
         cls = target.__class__
         cls_name = f"{cls.__module__}.{cls.__name__}" if cls.__module__ != "__main__" else cls.__name__
         logger.warning(f"Dataclass type validation failed, types are enforced. {cls_name} errors={repr(errors)})")
+
+def pydantic_type_validator(cls, values: dict, strict: bool = False, enforce: bool = False):
+    fields = cls.__fields__.values()
+    errors = {}
+    for field in fields:
+        field_name = field.name
+        expected_type = field.type_
+        value = values[field_name]
+
+        err = _validate_types(expected_type=expected_type, value=value, strict=strict)
+        new_values = values
+        if err is not None:
+            errors[field_name] = err
+            if enforce:
+                val = field.default if not isinstance(field.default, type(None)) else None
+                if val is None:
+                    val = field.default_factory() if not isinstance(field.default_factory, type(None)) else None
+                if val is None:
+                    raise EnforceError("Can't enforce values as there is no default")
+                new_values[field_name] = val
+
+    if len(errors) > 0 and not enforce:
+        raise TypeValidationError("Pydantic Type Validation Error", target=cls, errors=errors)
+
+    elif len(errors) > 0 and enforce:
+        cls_name = cls.__name__
+        logger.warning(f"Pydantic type validation failed, types are enforced. {cls_name} errors={repr(errors)})")
+    return new_values
 
 
 def dataclass_validate(cls=None, *, strict: bool = False, before_post_init: bool = False, enforce: bool = False):
@@ -213,3 +240,47 @@ def dataclass_validate(cls=None, *, strict: bool = False, before_post_init: bool
     setattr(cls, wrapped_method_name, method_wrapper)
 
     return cls
+
+if __name__ == "__main__":
+    #@dataclasses.dataclass
+    #class TestClass:
+    #    k: str = "key"
+    #    v: float = 1.2
+
+    #test_class = TestClass(k=1.2, v="key")
+
+    #@dataclasses.dataclass
+    #class TestClass:
+    #    k: str = "key"
+    #    v: float = 1.2
+
+    #    def __post_init__(self):
+    #        dataclass_type_validator(self, enforce=True)
+
+    #test_class = TestClass(k=1.2, v="key")
+    from pydantic import root_validator
+    class TestClass(BaseModel):
+        k: str = "key"
+        v: float = 1.2
+
+        @root_validator(pre=True)
+        def enforce_validator(cls, values):
+            values = pydantic_type_validator(cls, values, enforce=True)
+            return values
+
+        def validate_class(self):
+            from pydantic import validate_model
+            object_setattr = object.__setattr__
+            values, fields_set, validation_error = validate_model(self.__class__, self.dict())
+            if validation_error:
+                raise validation_error
+            object_setattr(self, '__dict__', values)
+            object_setattr(self, '__fields_set__', fields_set)
+            self._init_private_attributes()
+
+    test_class = TestClass(k=1.2, v="key")
+    print(test_class)
+    setattr(test_class, "v", "key")
+    print(test_class)
+    test_class.validate_class()
+    print(test_class)

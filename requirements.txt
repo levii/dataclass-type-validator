@@ -28,3 +28,4 @@ typing-extensions==3.10.0.0
     # via importlib-metadata
 zipp==3.4.1
     # via importlib-metadata
+pydantic
