@@ -139,7 +139,10 @@ def _validate_types(expected_type: type, value: Any, strict: bool) -> Optional[s
 
 
 def dataclass_type_validator(target, strict: bool = False, enforce: bool = False):
-    fields = dataclasses.fields(target)
+    if isinstance(target, BaseModel):
+        fields = target.fields.values()
+    else:
+        fields = dataclasses.fields(target)
 
     errors = {}
     for field in fields:
@@ -151,8 +154,8 @@ def dataclass_type_validator(target, strict: bool = False, enforce: bool = False
         if err is not None:
             errors[field_name] = err
             if enforce:
-                val = field.default if not isinstance(field.default, dataclasses._MISSING_TYPE) else field.default_factory()
-                if isinstance(val, dataclasses._MISSING_TYPE):
+                val = field.default if not isinstance(val, (dataclasses._MISSING_TYPE, type(None)) else field.default_factory()
+                if isinstance(val, (dataclasses._MISSING_TYPE, type(None))):
                     raise EnforceError("Can't enforce values as there is no default")
                 target[field_name] = val
 
