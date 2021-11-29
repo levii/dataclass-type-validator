@@ -181,6 +181,8 @@ def pydantic_type_validator(cls, values: dict, strict: bool = False, enforce: bo
         field_name = field.name
         expected_type = field.type_
         value = values[field_name] if field_name in values.keys() else None
+        if isinstance(value, dict) and isinstance(expected_type(), (BaseModel, dataclasses.dataclass)):
+            value = expected_type(**value)
 
         err = _validate_types(expected_type=expected_type, value=value, strict=strict)
         new_values = values
