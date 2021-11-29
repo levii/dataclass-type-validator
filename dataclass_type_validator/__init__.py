@@ -3,8 +3,11 @@ import functools
 import logging
 import typing
 from typing import Any, Optional
+
 from pydantic import BaseModel
+
 logger = logging.getLogger(__name__)
+
 
 class TypeValidationError(Exception):
     """Exception raised on type validation errors."""
@@ -153,7 +156,11 @@ def dataclass_type_validator(target, strict: bool = False, enforce: bool = False
         if err is not None:
             errors[field_name] = err
             if enforce:
-                val = field.default if not isinstance(field.default, (dataclasses._MISSING_TYPE, type(None))) else field.default_factory()
+                val = (
+                    field.default
+                    if not isinstance(field.default, (dataclasses._MISSING_TYPE, type(None)))
+                    else field.default_factory()
+                )
                 if isinstance(val, (dataclasses._MISSING_TYPE, type(None))):
                     raise EnforceError("Can't enforce values as there is no default")
                 setattr(target, field_name, val)
@@ -166,13 +173,14 @@ def dataclass_type_validator(target, strict: bool = False, enforce: bool = False
         cls_name = f"{cls.__module__}.{cls.__name__}" if cls.__module__ != "__main__" else cls.__name__
         logger.warning(f"Dataclass type validation failed, types are enforced. {cls_name} errors={repr(errors)})")
 
+
 def pydantic_type_validator(cls, values: dict, strict: bool = False, enforce: bool = False):
     fields = cls.__fields__.values()
     errors = {}
     for field in fields:
         field_name = field.name
         expected_type = field.type_
-        value = values[field_name]
+        value = values[field_name] if field_name in values.keys() else None
 
         err = _validate_types(expected_type=expected_type, value=value, strict=strict)
         new_values = values
@@ -195,7 +203,13 @@ def pydantic_type_validator(cls, values: dict, strict: bool = False, enforce: bo
     return new_values
 
 
-def dataclass_validate(cls=None, *, strict: bool = False, before_post_init: bool = False, enforce: bool = False):
+def dataclass_validate(
+    cls=None,
+    *,
+    strict: bool = False,
+    before_post_init: bool = False,
+    enforce: bool = False,
+):
     """Dataclass decorator to automatically add validation to a dataclass.
 
     So you don't have to add a __post_init__ method, or if you have one, you don't have
@@ -210,7 +224,12 @@ def dataclass_validate(cls=None, *, strict: bool = False, before_post_init: bool
         validation.  Default: False.
     """
     if cls is None:
-        return functools.partial(dataclass_validate, strict=strict, before_post_init=before_post_init, enforce=enforce)
+        return functools.partial(
+            dataclass_validate,
+            strict=strict,
+            before_post_init=before_post_init,
+            enforce=enforce,
+        )
 
     if not hasattr(cls, "__post_init__"):
         # No post-init method, so no processing.  Wrap the constructor instead.
@@ -241,24 +260,26 @@ def dataclass_validate(cls=None, *, strict: bool = False, before_post_init: bool
 
     return cls
 
+
 if __name__ == "__main__":
-    #@dataclasses.dataclass
-    #class TestClass:
+    # @dataclasses.dataclass
+    # class TestClass:
     #    k: str = "key"
     #    v: float = 1.2
 
-    #test_class = TestClass(k=1.2, v="key")
+    # test_class = TestClass(k=1.2, v="key")
 
-    #@dataclasses.dataclass
-    #class TestClass:
+    # @dataclasses.dataclass
+    # class TestClass:
     #    k: str = "key"
     #    v: float = 1.2
 
     #    def __post_init__(self):
     #        dataclass_type_validator(self, enforce=True)
 
-    #test_class = TestClass(k=1.2, v="key")
+    # test_class = TestClass(k=1.2, v="key")
     from pydantic import root_validator
+
     class TestClass(BaseModel):
         k: str = "key"
         v: float = 1.2
@@ -270,12 +291,13 @@ if __name__ == "__main__":
 
         def validate_class(self):
             from pydantic import validate_model
+
             object_setattr = object.__setattr__
             values, fields_set, validation_error = validate_model(self.__class__, self.dict())
             if validation_error:
                 raise validation_error
-            object_setattr(self, '__dict__', values)
-            object_setattr(self, '__fields_set__', fields_set)
+            object_setattr(self, "__dict__", values)
+            object_setattr(self, "__fields_set__", fields_set)
             self._init_private_attributes()
 
     test_class = TestClass(k=1.2, v="key")
@@ -284,3 +306,4 @@ if __name__ == "__main__":
     print(test_class)
     test_class.validate_class()
     print(test_class)
+    TestClass()
