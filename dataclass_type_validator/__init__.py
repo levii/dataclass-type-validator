@@ -194,14 +194,6 @@ def pydantic_type_validator(
     check_extra = config.extra is not Extra.ignore
     cls_ = cls or model
 
-    for validator in model.__pre_root_validators__:
-        if pydantic_type_validator.__name__ == validator.__code__.co_names[0]:
-            continue
-        try:
-            input_data = validator(cls_, input_data)
-        except (ValueError, TypeError, AssertionError) as exc:
-            errors.append(ValidationError([ErrorWrapper(exc, loc=ROOT_KEY)], cls_))
-
     for name, field in model.__fields__.items():
         value = input_data.get(field.alias, _missing)
         using_name = False
