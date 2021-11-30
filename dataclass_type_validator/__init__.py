@@ -2,9 +2,12 @@ import dataclasses
 import functools
 import logging
 import typing
-from typing import Any, Optional
+from typing import Any, Optional, Tuple, Type
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Extra
+from pydantic.error_wrappers import ErrorWrapper, ValidationError
+from pydantic.errors import ExtraError, MissingError
+from pydantic.utils import ROOT_KEY, GetterDict
 
 logger = logging.getLogger(__name__)
 
@@ -174,35 +177,90 @@ def dataclass_type_validator(target, strict: bool = False, enforce: bool = False
         logger.warning(f"Dataclass type validation failed, types are enforced. {cls_name} errors={repr(errors)})")
 
 
-def pydantic_type_validator(cls, values: dict, strict: bool = False, enforce: bool = False):
-    fields = cls.__fields__.values()
-    errors = {}
-    for field in fields:
-        field_name = field.name
-        expected_type = field.type_
-        value = values[field_name] if field_name in values.keys() else None
-        if isinstance(value, dict) and isinstance(expected_type(), (BaseModel, dataclasses.dataclass)):
-            value = expected_type(**value)
+def pydantic_type_validator(
+    model: Type[BaseModel], input_data: "DictStrAny", cls: "ModelOrDc" = None, enforce: bool = False
+) -> Tuple["DictStrAny", "SetStr", Optional[ValidationError]]:
+    """
+    validate data against a model.
+    """
+    _missing = object()
+    values = {}
+    errors = []
+    # input_data names, possibly alias
+    names_used = set()
+    # field names, never aliases
+    fields_set = set()
+    config = model.__config__
+    check_extra = config.extra is not Extra.ignore
+    cls_ = cls or model
 
-        err = _validate_types(expected_type=expected_type, value=value, strict=strict)
-        new_values = values
-        if err is not None:
-            errors[field_name] = err
-            if enforce:
-                val = field.default if not isinstance(field.default, type(None)) else None
-                if val is None:
-                    val = field.default_factory() if not isinstance(field.default_factory, type(None)) else None
-                if val is None:
-                    raise EnforceError("Can't enforce values as there is no default")
-                new_values[field_name] = val
+    for validator in model.__pre_root_validators__:
+        if pydantic_type_validator.__name__ == validator.__code__.co_names[0]:
+            continue
+        try:
+            input_data = validator(cls_, input_data)
+        except (ValueError, TypeError, AssertionError) as exc:
+            errors.append(ValidationError([ErrorWrapper(exc, loc=ROOT_KEY)], cls_))
 
-    if len(errors) > 0 and not enforce:
-        raise TypeValidationError("Pydantic Type Validation Error", target=cls, errors=errors)
+    for name, field in model.__fields__.items():
+        value = input_data.get(field.alias, _missing)
+        using_name = False
+        if value is _missing and config.allow_population_by_field_name and field.alt_alias:
+            value = input_data.get(field.name, _missing)
+            using_name = True
 
-    elif len(errors) > 0 and enforce:
-        cls_name = cls.__name__
-        logger.warning(f"Pydantic type validation failed, types are enforced. {cls_name} errors={repr(errors)})")
-    return new_values
+        if value is _missing:
+            if field.required:
+                errors.append(ErrorWrapper(MissingError(), loc=field.alias))
+                continue
+
+            value = field.get_default()
+
+            if not config.validate_all and not field.validate_always:
+                values[name] = value
+                continue
+        else:
+            fields_set.add(name)
+            if check_extra:
+                names_used.add(field.name if using_name else field.alias)
+
+        v_, errors_ = field.validate(value, values, loc=field.alias, cls=cls_)
+        if errors_ and enforce:
+            values[name] = field.get_default()
+            errors_ = None
+        if isinstance(errors_, ErrorWrapper):
+            errors.append(errors_)
+        elif isinstance(errors_, list):
+            errors.extend(errors_)
+        else:
+            values[name] = v_
+
+    if check_extra:
+        if isinstance(input_data, GetterDict):
+            extra = input_data.extra_keys() - names_used
+        else:
+            extra = input_data.keys() - names_used
+        if extra:
+            fields_set |= extra
+            if config.extra is Extra.allow:
+                for f in extra:
+                    values[f] = input_data[f]
+            else:
+                for f in sorted(extra):
+                    errors.append(ErrorWrapper(ExtraError(), loc=f))
+
+    for skip_on_failure, validator in model.__post_root_validators__:
+        if skip_on_failure and errors:
+            continue
+        try:
+            values = validator(cls_, values)
+        except (ValueError, TypeError, AssertionError) as exc:
+            errors.append(ErrorWrapper(exc, loc=ROOT_KEY))
+
+    if errors:
+        return values, fields_set, ValidationError(errors, cls_)
+    else:
+        return values, fields_set, None
 
 
 def dataclass_validate(
