@@ -10,7 +10,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 packages = [
-    package for package in setuptools.find_packages()
+    package for package in setuptools.find_packages(exclude=["tests"])
 ]
 
 setuptools.setup(
