@@ -199,8 +199,6 @@ class TestTypeValidationDict:
             ), DataclassTestDict)
 
 
-
-
 @dataclasses.dataclass(frozen=True)
 class DataclassTestCallable:
     func: typing.Callable[[int, int], int]
