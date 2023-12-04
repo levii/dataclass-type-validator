@@ -113,6 +113,7 @@ _validate_typing_mappings = {
     'Tuple': _validate_typing_tuple,
     'tuple': _validate_typing_tuple,
     'FrozenSet': _validate_typing_frozenset,
+    'frozenset': _validate_typing_frozenset,
     'Dict': _validate_typing_dict,
     'dict': _validate_typing_dict,
     'Callable': _validate_typing_callable,
