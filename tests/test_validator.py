@@ -361,3 +361,77 @@ def optional_type_name(arg_type_name):
         return f"typing.Union\\[({arg_type_name}, NoneType|NoneType, {arg_type_name})\\]"
 
     return f"typing.Optional\\[{arg_type_name}\\]"
+
+# Tests for generic types, only in 3.9+
+if sys.version_info >= (3, 9):
+
+    @dataclasses.dataclass(frozen=True)
+    class DataclassTestGenericList:
+        array_of_numbers: list[int]
+        array_of_strings: list[str]
+        array_of_optional_strings: list[typing.Optional[str]]
+
+        def __post_init__(self):
+            dataclass_type_validator(self)
+
+
+    class TestTypeValidationGenericList:
+        def test_build_success(self):
+            assert isinstance(DataclassTestGenericList(
+                array_of_numbers=[],
+                array_of_strings=[],
+                array_of_optional_strings=[],
+            ), DataclassTestGenericList)
+            assert isinstance(DataclassTestGenericList(
+                array_of_numbers=[1, 2],
+                array_of_strings=['abc'],
+                array_of_optional_strings=['abc', None]
+            ), DataclassTestGenericList)
+
+        def test_build_failure_on_array_numbers(self):
+            with pytest.raises(TypeValidationError, match='must be an instance of list\\[int\\]'):
+                assert isinstance(DataclassTestGenericList(
+                    array_of_numbers=['abc'],
+                    array_of_strings=['abc'],
+                    array_of_optional_strings=['abc', None]
+                ), DataclassTestGenericList)
+
+        def test_build_failure_on_array_strings(self):
+            with pytest.raises(TypeValidationError, match='must be an instance of list\\[str\\]'):
+                assert isinstance(DataclassTestGenericList(
+                    array_of_numbers=[1, 2],
+                    array_of_strings=[123],
+                    array_of_optional_strings=['abc', None]
+                ), DataclassTestGenericList)
+
+        def test_build_failure_on_array_optional_strings(self):
+            with pytest.raises(TypeValidationError,
+                               match=f"must be an instance of list\\[{optional_type_name('str')}\\]"):
+                assert isinstance(DataclassTestGenericList(
+                    array_of_numbers=[1, 2],
+                    array_of_strings=['abc'],
+                    array_of_optional_strings=[123, None]
+                ), DataclassTestGenericList)
+
+    @dataclasses.dataclass(frozen=True)
+    class DataclassTestGenericDict:
+        str_to_str: dict[str, str]
+        str_to_any: dict[str, typing.Any]
+
+        def __post_init__(self):
+            dataclass_type_validator(self)
+
+
+    class TestTypeValidationGenericDict:
+        def test_build_success(self):
+            assert isinstance(DataclassTestGenericDict(
+                str_to_str={'str': 'str'},
+                str_to_any={'str': 'str', 'str2': 123}
+            ), DataclassTestGenericDict)
+
+        def test_build_failure(self):
+            with pytest.raises(TypeValidationError, match='must be an instance of dict\\[str, str\\]'):
+                assert isinstance(DataclassTestGenericDict(
+                    str_to_str={'str': 123},
+                    str_to_any={'key': []}
+                ), DataclassTestGenericDict)
