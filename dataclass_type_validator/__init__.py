@@ -9,6 +9,7 @@ import types
 
 GlobalNS_T = Dict[str, Any]
 
+
 class TypeValidationError(Exception):
     """Exception raised on type validation errors.
     """
