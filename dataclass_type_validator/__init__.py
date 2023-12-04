@@ -5,9 +5,9 @@ import sys
 from typing import Any
 from typing import Optional
 from typing import Dict
+import types
 
 GlobalNS_T = Dict[str, Any]
-
 
 class TypeValidationError(Exception):
     """Exception raised on type validation errors.
@@ -109,15 +109,22 @@ def _validate_typing_literal(expected_type: type, value: Any, strict: bool) -> O
 
 _validate_typing_mappings = {
     'List': _validate_typing_list,
+    'list': _validate_typing_list,
     'Tuple': _validate_typing_tuple,
+    'tuple': _validate_typing_tuple,
     'FrozenSet': _validate_typing_frozenset,
     'Dict': _validate_typing_dict,
+    'dict': _validate_typing_dict,
     'Callable': _validate_typing_callable,
 }
 
 
+def _type_name(t: type) -> str:
+    return t._name if hasattr(t, '_name') else t.__name__
+
+
 def _validate_sequential_types(expected_type: type, value: Any, strict: bool, globalns: GlobalNS_T) -> Optional[str]:
-    validate_func = _validate_typing_mappings.get(expected_type._name)
+    validate_func = _validate_typing_mappings.get(_type_name(expected_type))
     if validate_func is not None:
         return validate_func(expected_type, value, strict, globalns)
 
@@ -132,16 +139,22 @@ def _validate_sequential_types(expected_type: type, value: Any, strict: bool, gl
         return
 
     if strict:
-        raise RuntimeError(f'Unknown type of {expected_type} (_name = {expected_type._name})')
+        raise RuntimeError(f'Unknown type of {expected_type} (_name = {_type_name(expected_type)}')
+
+def _is_generic_alias(expected_type: type) -> bool:
+    if sys.version_info < (3, 9):
+        return isinstance(expected_type, typing._GenericAlias)
+    else:
+        return isinstance(expected_type, (typing._GenericAlias, types.GenericAlias))
 
 
 def _validate_types(expected_type: type, value: Any, strict: bool, globalns: GlobalNS_T) -> Optional[str]:
-    if isinstance(expected_type, type):
-        return _validate_type(expected_type=expected_type, value=value)
-
-    if isinstance(expected_type, typing._GenericAlias):
+    if _is_generic_alias(expected_type):
         return _validate_sequential_types(expected_type=expected_type, value=value,
                                           strict=strict, globalns=globalns)
+    
+    if isinstance(expected_type, type):
+        return _validate_type(expected_type=expected_type, value=value)
 
     if isinstance(expected_type, typing.ForwardRef):
         referenced_type = _evaluate_forward_reference(expected_type, globalns)
