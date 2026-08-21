@@ -1,5 +1,9 @@
 # dataclass-type-validator
 
+> [!WARNING]
+> **This repository has been archived and is no longer maintained.**
+> No further updates, bug fixes, or releases will be made.
+
 The `dataclass-type-validator` is a type validation library for the properties of `dataclasses.dataclass` using Python type hint information.
 
 ## Installation
